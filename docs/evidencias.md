@@ -1,7 +1,7 @@
 # Evidencias · Laboratorio API Gateway
 
 ## Integrantes
-- Nombre:
+- Jonathan Larraguibel
 - Nombre:
 - Nombre:
 
@@ -11,12 +11,12 @@ Antes de utilizar el gateway, registrar las pruebas directas contra JSONPlacehol
 
 | Método | URL | Status | Observación |
 |---|---|---:|---|
-| GET | `https://jsonplaceholder.typicode.com/posts` | | |
-| GET | `https://jsonplaceholder.typicode.com/posts/1` | | |
+| GET | `https://jsonplaceholder.typicode.com/posts` | 200 | Devuelve el arreglo completo de posts (100 elementos), `Content-Type: application/json` |
+| GET | `https://jsonplaceholder.typicode.com/posts/1` | 200 | Devuelve un único objeto JSON (`userId`, `id`, `title`, `body`) |
 
 **¿Qué información del backend conoce el cliente en este escenario?**
 
-Respuesta:
+Respuesta: El cliente conoce la dirección física completa del backend (`https://jsonplaceholder.typicode.com`) y su estructura de rutas (`/posts`, `/posts/{id}`). Si el backend cambiara de dominio, se dividiera en varios microservicios o se moviera a otra infraestructura, cada cliente que lo invoca directamente dejaría de funcionar y tendría que actualizarse uno por uno. Con muchos servicios esto se vuelve inmanejable: no existe un único punto donde aplicar cambios, políticas de seguridad o versionado. Ese es exactamente el problema que resuelve un API Gateway: el cliente solo conoce la URL del gateway, y es el gateway quien sabe (y puede cambiar) dónde vive realmente cada backend.
 
 ---
 
@@ -45,24 +45,26 @@ Explicar brevemente qué responsabilidad cumple cada componente.
 
 | Método | URL | Status | Headers relevantes | Interpretación |
 |---|---|---:|---|---|
-| GET | `/api/v1/posts` | | | colección |
-| GET | `/api/v1/posts/1` | | | recurso individual |
-| POST | `/api/v1/posts` | | | creación simulada |
-| PUT | `/api/v1/posts/1` | | | actualización simulada |
-| DELETE | `/api/v1/posts/1` | | | eliminación simulada |
+| GET | `/api/v1/posts` | 200 | `Content-Type: application/json`, `x-powered-by: Express` | colección |
+| GET | `/api/v1/posts/1` | 200 | `Content-Type: application/json`, `x-powered-by: Express` | recurso individual |
+| POST | `/api/v1/posts` | _(Parte B)_ | | creación simulada |
+| PUT | `/api/v1/posts/1` | _(Parte B)_ | | actualización simulada |
+| DELETE | `/api/v1/posts/1` | _(Parte B)_ | | eliminación simulada |
 
 Para POST y PUT incluir también el body enviado.
+
+> El header `x-powered-by: Express` es el sello del backend real (JSONPlaceholder corre sobre Express). Que llegue intacto hasta el cliente confirma que el gateway efectivamente reenvió la petición y no respondió con datos propios.
 
 ---
 
 ## 4. Routing
 
-- URL solicitada por el cliente:
-- `id` de la route:
-- predicate que hizo match:
-- URI/integration configurada:
-- path recibido finalmente por el backend:
-- función de `RewritePath`:
+- URL solicitada por el cliente: `http://localhost:8080/api/v1/posts/1`
+- `id` de la route: `posts-v1`
+- predicate que hizo match: `Path=/api/v1/posts/**`
+- URI/integration configurada: `https://jsonplaceholder.typicode.com`
+- path recibido finalmente por el backend: `/posts/1`
+- función de `RewritePath`: toma la ruta original con el patrón `/api/v1/(?<segment>.*)` y la reescribe a `/${segment}` antes de reenviarla al backend. Es lo que permite que el cliente use un prefijo de versión (`/api/v1/...`) que el backend real ni siquiera conoce.
 
 ### Recorrido de una petición
 
@@ -71,6 +73,14 @@ Explicar con sus palabras:
 ```text
 cliente → gateway → backend → gateway → cliente
 ```
+
+1. El cliente hace `GET http://localhost:8080/api/v1/posts/1`. Solo conoce el gateway, no el backend real.
+2. El gateway evalúa sus routes en orden y encuentra que el predicate `Path=/api/v1/posts/**` de la route `posts-v1` hace match.
+3. Aplica el filtro `RewritePath`: transforma `/api/v1/posts/1` en `/posts/1`.
+4. El gateway reenvía la petición ya reescrita a la `uri` configurada: `https://jsonplaceholder.typicode.com/posts/1`.
+5. JSONPlaceholder procesa la petición como si fuera un cliente directo y responde `200 OK` con el JSON del post.
+6. El gateway recibe esa respuesta y la devuelve al cliente original, agregando los headers propios que tenga configurados (en etapas posteriores: `X-API-Version`, `X-Gateway-Lab`).
+7. El cliente recibe la respuesta sin haber conocido en ningún momento la URL real del backend.
 
 ---
 
