@@ -119,8 +119,8 @@ Responder:
 ## 6. Header transversal
 
 - Header esperado: `X-Gateway-Lab: DSY1107`
-- Evidencia observada:
-- ¿Por qué este comportamiento puede considerarse transversal?:
+- Evidencia observada: presente en `GET /api/v1/posts/1` (`X-API-Version: v1`, `X-Gateway-Lab: DSY1107`) y en `GET /api/v2/posts/1` (`X-API-Version: v2`, `X-Gateway-Lab: DSY1107`), ambos `200 OK`.
+- ¿Por qué este comportamiento puede considerarse transversal?: porque se declaró una sola vez, en `default-filters` (a nivel de `webflux`, fuera de cualquier `route`), y se aplica automáticamente a la respuesta de **todas** las rutas del gateway. A diferencia de `X-API-Version`, que cada route declara individualmente porque su valor depende de cuál ruta hizo match, `X-Gateway-Lab` no varía y no debería repetirse en cada route — es una política del gateway como un todo, no de un endpoint en particular.
 
 ---
 
@@ -166,14 +166,14 @@ Respuesta: la API expone **recursos identificables por URL** (`/posts` como cole
 
 | Responsabilidad | Cliente | Gateway | Backend | Justificación |
 |---|:---:|:---:|:---:|---|
-| routing | | | | |
-| lógica de negocio | | | | |
-| autenticación/autorización | | | | |
-| transformación de rutas | | | | |
-| persistencia | | | | |
-| rate limiting | | | | |
-| reglas de negocio | | | | |
-| observabilidad | | | | |
+| routing | | ✔ | | El gateway decide, según el `Path` de la petición, a qué integración/backend enviarla (`posts-v1` vs `posts-v2`). El cliente y el backend no participan de esa decisión. |
+| lógica de negocio | | | ✔ | El gateway no interpreta ni transforma el significado de los datos (título, body, etc.); eso vive exclusivamente en el backend. |
+| autenticación/autorización | | (no configurada en este laboratorio) | | No se implementó en este lab, pero conceptualmente es el gateway quien debería centralizarla como punto de entrada único, para no repetirla en cada backend. |
+| transformación de rutas | | ✔ | | `RewritePath` convierte `/api/v1/posts/1` en `/posts/1` antes de reenviar. Es exclusivamente responsabilidad del gateway. |
+| persistencia | | | ✔ | Los datos (reales o simulados, como en JSONPlaceholder) viven en el backend, nunca en el gateway. |
+| rate limiting | | ✔ | | Es una política transversal aplicable a todo el tráfico de entrada; no tendría sentido implementarla por separado en cada backend. |
+| reglas de negocio | | | ✔ | Ej.: validar que un título no esté vacío, o qué transiciones de estado son válidas. El gateway no conoce el dominio. |
+| observabilidad del tráfico | | ✔ | | El header `X-Gateway-Lab` agregado mediante `default-filters` es un ejemplo simple: el gateway es el punto natural para medir y trazar todo lo que entra y sale, sin instrumentar cada backend por separado. |
 
 ---
 
