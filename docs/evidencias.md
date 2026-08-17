@@ -1,9 +1,7 @@
 # Evidencias · Laboratorio API Gateway
 
 ## Integrantes
-- Jonathan Larraguibel
-- Nombre:
-- Nombre:
+- Jonathan Larraguibel (actividad realizada de forma individual)
 
 ## 1. Backend directo
 
@@ -225,7 +223,8 @@ Respuesta: la API expone **recursos identificables por URL** (`/posts` como cole
 | Jonathan Larraguibel | `feature/routing-v1` | mergeado a `main` (sin PR formal — ver nota) | Parte A/B: levantar el gateway, evidencia backend directo, CRUD vía gateway, RMM nivel 2 |
 | Jonathan Larraguibel | `feature/version-v2` | [#1](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/1) | Parte C: ruta `posts-v2`, header `X-API-Version` |
 | Jonathan Larraguibel | `feature/gateway-header` | [#2](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/2) | Parte D: header transversal `X-Gateway-Lab`, tabla de responsabilidades |
-| Jonathan Larraguibel | `feature/cors` | _(pendiente)_ | Parte E: `globalcors`, fix `DedupeResponseHeader`, evidencia antes/después |
+| Jonathan Larraguibel | `feature/cors` | [#3](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/3) | Parte E: `globalcors`, fix `DedupeResponseHeader`, evidencia antes/después |
+| Jonathan Larraguibel | `docs/evidencias` | [#4](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/4) | Parte F: README, cierre de evidencias |
 
 > Nota: la rama `feature/routing-v1` se mergeó directamente por línea de comandos (`git merge` + `push`) en vez de a través de un Pull Request en GitHub, por lo que no generó un PR con número propio. A partir de la Parte C se corrigió el flujo: cada rama se sube y se mergea mediante un Pull Request real en GitHub, dejando el registro de colaboración que pide la actividad.
 
