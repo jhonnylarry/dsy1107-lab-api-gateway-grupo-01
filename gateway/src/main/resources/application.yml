@@ -20,9 +20,18 @@ spring:
                 # El cliente invoca /api/v1/posts/1, pero el backend público
                 # recibe /posts/1.
                 - RewritePath=/api/v1/(?<segment>.*), /$\{segment}
+                - AddResponseHeader=X-API-Version, v1
 
-          # TODO ETAPA C:
-          # Agregar una ruta posts-v2 y un header X-API-Version.
+            # ETAPA C: misma integración que v1, mismo backend, pero expuesta
+            # bajo un prefijo de ruta distinto. Permite que v1 y v2 convivan
+            # sin que los consumidores de v1 se vean afectados.
+            - id: posts-v2
+              uri: https://jsonplaceholder.typicode.com
+              predicates:
+                - Path=/api/v2/posts/**
+              filters:
+                - RewritePath=/api/v2/(?<segment>.*), /$\{segment}
+                - AddResponseHeader=X-API-Version, v2
 
           # TODO ETAPA D:
           # Agregar un header transversal X-Gateway-Lab.

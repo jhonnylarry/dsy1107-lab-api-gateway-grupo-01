@@ -100,17 +100,19 @@ cliente → gateway → backend → gateway → cliente
 
 ## 5. Versionado
 
-- Evidencia `/api/v1`:
-- Header `X-API-Version` observado:
-- Evidencia `/api/v2`:
-- Header `X-API-Version` observado:
+- Evidencia `/api/v1`: `GET http://localhost:8080/api/v1/posts/1` → `200 OK`
+- Header `X-API-Version` observado: `v1`
+- Evidencia `/api/v2`: `GET http://localhost:8080/api/v2/posts/1` → `200 OK`
+- Header `X-API-Version` observado: `v2`
+
+Ambas rutas apuntan al **mismo backend** (`https://jsonplaceholder.typicode.com`); la única diferencia está en la configuración del gateway: el predicate que hace match (`/api/v1/posts/**` vs `/api/v2/posts/**`) y el header que cada route agrega en la respuesta.
 
 Responder:
 
-1. ¿Por qué mantener v1 y v2 simultáneamente?
-2. ¿Qué consumidores podrían seguir usando v1?
-3. ¿Cuándo retirarían una versión?
-4. ¿Versionar el contrato público es lo mismo que versionar el servidor desplegado?
+1. **¿Por qué mantener v1 y v2 simultáneamente?** Porque distintos consumidores pueden depender de contratos distintos (campos, formatos, comportamiento) y no todos pueden migrar al mismo tiempo. Mantener ambas versiones evita romper integraciones existentes mientras se habilita la nueva.
+2. **¿Qué consumidores podrían seguir usando v1?** Clientes externos, integraciones de terceros o versiones antiguas de una app móvil/web que todavía no se actualizaron al nuevo contrato.
+3. **¿Cuándo retirarían una versión?** Cuando se pueda confirmar (por ejemplo mediante métricas de tráfico) que ya no quedan consumidores usando esa versión, y después de haber comunicado un período de deprecación con anticipación.
+4. **¿Versionar el contrato público es lo mismo que versionar el servidor desplegado?** No. Aquí `v1` y `v2` son simplemente dos routes del gateway apuntando al mismo backend físico — no hay dos despliegues distintos del servidor. El versionado del contrato (la URL/API que ve el cliente) es independiente de cuántas instancias o versiones de software corren detrás.
 
 ---
 
