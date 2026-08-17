@@ -8,6 +8,12 @@ spring:
     gateway:
       server:
         webflux:
+          # ETAPA D: se aplica a la respuesta de TODAS las rutas, sin
+          # importar cuál haga match. Es una política transversal del
+          # gateway, no algo que cada route deba repetir.
+          default-filters:
+            - AddResponseHeader=X-Gateway-Lab, DSY1107
+
           routes:
             # ETAPA INICIAL
             # Esta ruta ya funciona para que el grupo pueda comprobar
@@ -32,9 +38,6 @@ spring:
               filters:
                 - RewritePath=/api/v2/(?<segment>.*), /$\{segment}
                 - AddResponseHeader=X-API-Version, v2
-
-          # TODO ETAPA D:
-          # Agregar un header transversal X-Gateway-Lab.
 
           # TODO ETAPA E:
           # Configurar CORS para el cliente web que se ejecutará en puerto 5500.
