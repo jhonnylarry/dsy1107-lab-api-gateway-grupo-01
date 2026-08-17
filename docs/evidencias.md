@@ -129,28 +129,57 @@ Responder:
 ### Antes de configurar CORS
 
 - URL del cliente web: `http://localhost:5500`
-- Endpoint consultado:
-- Resultado visible:
-- Mensaje relevante en Console/Network:
+- Endpoint consultado: `GET http://localhost:8080/api/v1/posts/1`
+- Resultado visible: la petición **funcionó** (`HTTP 200`, JSON completo en pantalla).
+- Mensaje relevante en Console/Network: ninguno — no hubo error.
+
+**Hallazgo no esperado por la guía:** con el cliente provisto (que solo hace `GET` sin headers personalizados), la petición tuvo éxito **incluso sin configurar `globalcors` en el gateway**. La causa: JSONPlaceholder ya responde su propio `access-control-allow-origin` reflejando cualquier `Origin` recibido, y el gateway, sin CORS propio configurado, deja pasar ese header del backend sin tocarlo. El navegador evalúa el header final que llega, sin importar si lo puso el gateway o el backend, así que la petición simple igual pasó.
+
+Lo que sí falló antes de configurar CORS fue el **preflight**: `curl -X OPTIONS http://localhost:8080/api/v1/posts -H "Origin: http://localhost:5500" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: Content-Type"` devolvió `200 OK` con `content-length: 0` y **sin ningún header `Access-Control-*`**. Cualquier petición real que dependiera de ese preflight (un POST/PUT/DELETE con `Content-Type: application/json` desde un navegador) habría sido bloqueada.
 
 ### Después de configurar CORS
 
-- Resultado visible:
-- `Access-Control-Allow-Origin`:
-- `Access-Control-Allow-Methods`:
+- Resultado visible: sigue funcionando (`HTTP 200`, JSON completo) desde `http://localhost:5500`.
+- `Access-Control-Allow-Origin`: `http://localhost:5500`
+- `Access-Control-Allow-Methods`: `GET,POST,PUT,DELETE,OPTIONS`
+
+**Problema encontrado al configurar `globalcors`:** al agregar la política CORS del gateway, la respuesta terminó con el header `Access-Control-Allow-Origin` **duplicado** (uno puesto por JSONPlaceholder, otro por el gateway), ambos con el mismo valor. El navegador rechazó la respuesta con:
+
+```text
+Access to fetch at 'http://localhost:8080/api/v1/posts/1' from origin 'http://localhost:5500'
+has been blocked by CORS policy: The 'Access-Control-Allow-Origin' header contains multiple
+values 'http://localhost:5500, http://localhost:5500', but only one is allowed.
+```
+
+- **Causa:** Spring Cloud Gateway agrega su propio header CORS sin eliminar el que ya traía la respuesta del backend.
+- **Solución:** se agregó el filtro `DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE` en `default-filters`, que colapsa los valores repetidos a uno solo. Verificado por `curl` (un único header) y en el navegador (la petición volvió a funcionar sin error de consola).
+
+**Prueba de bloqueo real (origen no permitido):** se sirvió el mismo `client/index.html` en `http://localhost:5501` (puerto no declarado en `allowedOrigins`). Resultado: `TypeError: Failed to fetch` en el navegador. La misma petición vía `curl -H "Origin: http://localhost:9999"` devolvió `403 Forbidden` en el preflight y también en la petición GET simple — el gateway ahora bloquea activamente los orígenes no permitidos, en vez de solo dejar pasar lo que decida el backend.
 
 ### Preflight OPTIONS
 
 - Request utilizado:
-- Status:
-- Headers relevantes:
+  ```bash
+  curl -i -X OPTIONS http://localhost:8080/api/v1/posts \
+    -H "Origin: http://localhost:5500" \
+    -H "Access-Control-Request-Method: POST" \
+    -H "Access-Control-Request-Headers: Content-Type"
+  ```
+- Status: `200 OK` (origen permitido) / `403 Forbidden` (origen `http://localhost:9999`, no permitido)
+- Headers relevantes (origen permitido):
+  ```text
+  Access-Control-Allow-Origin: http://localhost:5500
+  Access-Control-Allow-Methods: GET,POST,PUT,DELETE,OPTIONS
+  Access-Control-Allow-Headers: Content-Type
+  Access-Control-Max-Age: 3600
+  ```
 
 Responder:
 
-1. ¿Por qué Postman puede funcionar cuando el navegador falla?
-2. ¿Qué es un preflight?
-3. ¿CORS autentica o autoriza usuarios?
-4. ¿Qué riesgo tendría permitir cualquier origen sin analizar el contexto?
+1. **¿Por qué Postman puede funcionar cuando el navegador falla?** Postman no es un navegador y no implementa la Same-Origin Policy ni CORS. CORS es una restricción que aplican los navegadores sobre el código JavaScript que ellos mismos ejecutan, no una barrera del servidor contra cualquier cliente HTTP.
+2. **¿Qué es un preflight?** Una petición `OPTIONS` que el navegador envía automáticamente antes de una petición "no simple" (por ejemplo `POST` con `Content-Type: application/json`), para preguntarle al servidor si el método, los headers y el origen están permitidos, antes de enviar la petición real.
+3. **¿CORS autentica o autoriza usuarios?** No. CORS solo decide si el navegador deja que el JavaScript de una página lea la respuesta de otro origen. No verifica identidad ni permisos de negocio — un backend sigue necesitando sus propios mecanismos de autenticación/autorización.
+4. **¿Qué riesgo tendría permitir cualquier origen sin analizar el contexto?** Con `Access-Control-Allow-Origin: *` (o reflejando cualquier origen, como hace JSONPlaceholder), cualquier sitio web podría leer las respuestas de la API desde el navegador de un usuario autenticado, exponiendo datos que deberían quedar restringidos a los orígenes realmente autorizados.
 
 ---
 
@@ -179,9 +208,13 @@ Respuesta: la API expone **recursos identificables por URL** (`/posts` como cole
 
 ## 10. Problemas encontrados
 
-1. Problema:
-   - causa:
-   - solución:
+1. Problema: al configurar `globalcors`, el cliente web dejó de funcionar con el error de consola `The 'Access-Control-Allow-Origin' header contains multiple values 'http://localhost:5500, http://localhost:5500', but only one is allowed`.
+   - causa: JSONPlaceholder (el backend) ya responde su propio header `Access-Control-Allow-Origin`, reflejando cualquier `Origin` recibido. El `globalcors` del gateway agrega el suyo encima sin eliminar el del backend, así que la respuesta final llega con el header duplicado y el navegador la rechaza por spec.
+   - solución: se agregó el filtro `DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE` en `default-filters`, que colapsa los valores repetidos a uno solo antes de que la respuesta llegue al cliente. Verificado con `curl` (un único header en la respuesta) y en el navegador (la petición volvió a funcionar sin error).
+
+2. Problema: la primera prueba del cliente web "antes de configurar CORS" no mostró ningún fallo, contradiciendo lo que se esperaba observar según la guía.
+   - causa: el cliente provisto solo hace un `GET` simple sin headers personalizados, y ese tipo de petición no dispara preflight. Como JSONPlaceholder ya es permisivo con CORS, la petición pasó igual, aunque el gateway todavía no tuviera su propia política.
+   - solución: no era un error de configuración, sino una limitación del caso de prueba. Se complementó la evidencia probando el preflight `OPTIONS` directamente con `curl` (que sí mostró la ausencia de headers `Access-Control-*` antes de configurar CORS) y bloqueando un origen no autorizado (`:5501`) después de configurar CORS, para demostrar el efecto real de la política.
 
 ---
 
@@ -189,14 +222,17 @@ Respuesta: la API expone **recursos identificables por URL** (`/posts` como cole
 
 | Integrante | Rama | Pull Request | Aporte principal |
 |---|---|---|---|
-| | | | |
+| Jonathan Larraguibel | `feature/routing-v1` | mergeado a `main` (sin PR formal — ver nota) | Parte A/B: levantar el gateway, evidencia backend directo, CRUD vía gateway, RMM nivel 2 |
+| Jonathan Larraguibel | `feature/version-v2` | [#1](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/1) | Parte C: ruta `posts-v2`, header `X-API-Version` |
+| Jonathan Larraguibel | `feature/gateway-header` | [#2](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/2) | Parte D: header transversal `X-Gateway-Lab`, tabla de responsabilidades |
+| Jonathan Larraguibel | `feature/cors` | _(pendiente)_ | Parte E: `globalcors`, fix `DedupeResponseHeader`, evidencia antes/después |
 
-Agregar enlaces a los Pull Requests.
+> Nota: la rama `feature/routing-v1` se mergeó directamente por línea de comandos (`git merge` + `push`) en vez de a través de un Pull Request en GitHub, por lo que no generó un PR con número propio. A partir de la Parte C se corrigió el flujo: cada rama se sube y se mergea mediante un Pull Request real en GitHub, dejando el registro de colaboración que pide la actividad.
 
 ---
 
 ## 12. Conclusiones
 
-- ¿Qué problema resolvió el gateway?
-- ¿Qué concepto del laboratorio sería equivalente al trabajar posteriormente con Amazon API Gateway?
-- ¿Qué aprendió el grupo que no depende específicamente de Spring Cloud Gateway?
+- **¿Qué problema resolvió el gateway?** Desacopló al cliente del backend real: el cliente solo conoce `localhost:8080` y nunca la URL física de JSONPlaceholder. Además centralizó, en un solo lugar, responsabilidades transversales que de otro modo habría que repetir en cada backend: routing por versión, headers de trazabilidad y política CORS.
+- **¿Qué concepto del laboratorio sería equivalente al trabajar posteriormente con Amazon API Gateway?** Cada `route` con su `predicate` y `uri` equivale a un *resource/method* con su *integration* en API Gateway; los `filters` (`RewritePath`, `AddResponseHeader`) equivalen a *mapping templates* o transformaciones de integración; y el `globalcors` equivale a la configuración CORS integrada de una HTTP API (o a la gestión manual de `OPTIONS` en una REST API).
+- **¿Qué aprendió el grupo que no depende específicamente de Spring Cloud Gateway?** Que CORS es una negociación sobre el header final que recibe el navegador, sin importar quién lo puso — por eso un backend permisivo puede "filtrarse" a través de un gateway que todavía no tiene su propia política, y por eso agregar CORS en el gateway sin considerar lo que ya envía el backend puede producir headers duplicados. Ese problema (y su solución con deduplicación de headers) es un caso general de cualquier gateway que reenvía tráfico hacia backends que también gestionan sus propios headers, independientemente de la tecnología usada.
