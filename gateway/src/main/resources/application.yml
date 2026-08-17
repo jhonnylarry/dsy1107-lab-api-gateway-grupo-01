@@ -13,6 +13,13 @@ spring:
           # gateway, no algo que cada route deba repetir.
           default-filters:
             - AddResponseHeader=X-Gateway-Lab, DSY1107
+            # JSONPlaceholder responde sus propios headers CORS (permisivos,
+            # reflejan cualquier Origin). El globalcors de abajo agrega los
+            # suyos encima, sin reemplazar los del backend, y el navegador
+            # termina viendo el header duplicado y rechaza la respuesta:
+            #   "Access-Control-Allow-Origin header contains multiple values"
+            # DedupeResponseHeader colapsa los valores repetidos a uno solo.
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
 
           routes:
             # ETAPA INICIAL
@@ -39,5 +46,23 @@ spring:
                 - RewritePath=/api/v2/(?<segment>.*), /$\{segment}
                 - AddResponseHeader=X-API-Version, v2
 
-          # TODO ETAPA E:
-          # Configurar CORS para el cliente web que se ejecutará en puerto 5500.
+          # ETAPA E: política CORS del gateway. Sin esto, el navegador
+          # bloquea cualquier petición cross-origin que requiera preflight
+          # (POST/PUT/DELETE con Content-Type: application/json), porque
+          # el gateway no respondía nada útil a un OPTIONS.
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - http://localhost:5500
+                  - http://127.0.0.1:5500
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders:
+                  - Content-Type
+                maxAge: 3600
