@@ -47,13 +47,27 @@ Explicar brevemente qué responsabilidad cumple cada componente.
 |---|---|---:|---|---|
 | GET | `/api/v1/posts` | 200 | `Content-Type: application/json`, `x-powered-by: Express` | colección |
 | GET | `/api/v1/posts/1` | 200 | `Content-Type: application/json`, `x-powered-by: Express` | recurso individual |
-| POST | `/api/v1/posts` | _(Parte B)_ | | creación simulada |
-| PUT | `/api/v1/posts/1` | _(Parte B)_ | | actualización simulada |
-| DELETE | `/api/v1/posts/1` | _(Parte B)_ | | eliminación simulada |
+| POST | `/api/v1/posts` | 201 | `Content-Type: application/json`, `location: .../posts/101` | creación simulada |
+| PUT | `/api/v1/posts/1` | 200 | `Content-Type: application/json` | actualización simulada |
+| DELETE | `/api/v1/posts/1` | 200 | `Content-Type: application/json`, body `{}` | eliminación simulada |
 
-Para POST y PUT incluir también el body enviado.
+Body enviado en **POST** `/api/v1/posts`:
+```json
+{"title":"Cloud Native","body":"Laboratorio API Gateway","userId":1}
+```
+Respuesta: `{"title":"Cloud Native","body":"Laboratorio API Gateway","userId":1,"id":101}` — JSONPlaceholder asigna `id: 101` (simulado, no se persiste realmente).
+
+Body enviado en **PUT** `/api/v1/posts/1`:
+```json
+{"id":1,"title":"Cloud Native actualizado","body":"Prueba PUT mediante gateway","userId":1}
+```
+Respuesta: devuelve el mismo objeto enviado, con status `200`.
+
+**DELETE** `/api/v1/posts/1` responde `200 OK` con body `{}` — confirma la eliminación sin devolver contenido.
 
 > El header `x-powered-by: Express` es el sello del backend real (JSONPlaceholder corre sobre Express). Que llegue intacto hasta el cliente confirma que el gateway efectivamente reenvió la petición y no respondió con datos propios.
+>
+> **Importante:** JSONPlaceholder *simula* creación, actualización y eliminación — no persiste los cambios. Un GET posterior a `/api/v1/posts/1` seguiría devolviendo el recurso original sin modificar.
 
 ---
 
@@ -141,6 +155,8 @@ Responder:
 ## 8. Richardson Maturity Model nivel 2
 
 Explicar qué elementos observados en el laboratorio permiten afirmar que la API utiliza recursos, métodos HTTP y status codes con semántica HTTP.
+
+Respuesta: la API expone **recursos identificables por URL** (`/posts` como colección, `/posts/1` como recurso individual), no acciones o verbos en la ruta (no existe algo como `/getPost` o `/deletePost`). Sobre esos mismos recursos se usan **distintos métodos HTTP según la operación**: `GET` para leer, `POST` para crear, `PUT` para reemplazar y `DELETE` para eliminar — el mismo recurso `/posts/1` cambia de comportamiento según el verbo, no según la ruta. Y los **status codes tienen significado real**: `200` para lecturas y actualizaciones exitosas, `201` para creación (con header `location` apuntando al nuevo recurso), y el mismo `200` con body vacío para una eliminación confirmada. Esa combinación — recursos + verbos con semántica + status codes correctos — es exactamente lo que define el nivel 2 de Richardson.
 
 ---
 
