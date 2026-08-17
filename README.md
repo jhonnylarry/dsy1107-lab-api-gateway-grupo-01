@@ -2,13 +2,11 @@
 
 **Asignatura:** DSY1107 · Desarrollo Cloud Native I
 **Semana:** 01 · **Grupo:** 01
-**Modalidad:** grupal · **Entrega:** repositorio GitHub
+**Modalidad:** individual · **Entrega:** repositorio GitHub
 
 ## 1. Integrantes
 
 - Jonathan Larraguibel
-- _(completar)_
-- _(completar)_
 
 ## 2. Objetivo
 
@@ -165,13 +163,15 @@ Conclusiones completas en `docs/evidencias.md` sección 12.
 
 ## 14. Colaboración GitHub
 
+Actividad realizada de forma individual (Jonathan Larraguibel). Aun así, el trabajo se organizó por ramas separadas por etapa, siguiendo la misma estrategia que pide la guía para un equipo:
+
 | Rama | Pull Request | Aporte |
 |---|---|---|
 | `feature/routing-v1` | mergeado directo a `main` (sin PR — ver nota) | Parte A/B: gateway funcional, evidencia backend directo, CRUD vía gateway |
 | `feature/version-v2` | [#1](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/1) | Parte C: ruta `posts-v2`, header `X-API-Version` |
 | `feature/gateway-header` | [#2](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/2) | Parte D: header transversal, tabla de responsabilidades |
 | `feature/cors` | [#3](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/3) | Parte E: CORS, fix de header duplicado |
-| `docs/evidencias` | _(este PR)_ | Parte F: README, cierre de evidencias |
+| `docs/evidencias` | [#4](https://github.com/jhonnylarry/dsy1107-lab-api-gateway-grupo-01/pull/4) | Parte F: README, cierre de evidencias |
 
 Detalle en `docs/evidencias.md` sección 11.
 
