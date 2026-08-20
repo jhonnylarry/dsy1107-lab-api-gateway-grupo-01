@@ -1,3 +1,8 @@
+> ⚠️ **Este repositorio se migró.** El contenido actualizado vive en el repositorio personal del estudiante, dentro de `labs/api-gateway/`:
+> 🔗 **https://github.com/jhonnylarry/DSY1107-002D-jonathan-larraguibel/tree/main/labs/api-gateway**
+>
+> Este repo se conserva como archivo histórico, sin actualizaciones futuras.
+
 # Laboratorio 1 · API Gateway local con Spring Cloud Gateway
 
 **Asignatura:** DSY1107 · Desarrollo Cloud Native I
